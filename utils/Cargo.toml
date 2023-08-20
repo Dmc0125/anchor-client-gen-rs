@@ -8,6 +8,7 @@ repository = "https://github.com/Dmc0125/anchor-client-gen-rs"
 keywords = ["anchor-lang", "idl"]
 readme = "../README.md"
 homepage = "https://crates.io/crates/anchor-client-gen-utils"
+description = "Utils crate for anchor-client-gen-rs"
 
 [dependencies]
 Inflector = "0.11.4"
