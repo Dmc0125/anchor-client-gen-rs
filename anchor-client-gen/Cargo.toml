@@ -2,7 +2,7 @@
 name = "anchor_client_gen"
 version = "0.0.1"
 edition = "2021"
-authors = ["dmc0125"]
+authors = ["Dominik Michal"]
 license = "MIT"
 repository = "https://github.com/Dmc0125/anchor-client-gen-rs"
 description = "Tool for generating crate from anchor IDL"
@@ -14,4 +14,4 @@ path = "src/lib.rs"
 proc-macro = true
 
 [dependencies]
-utils = { package = "utils", path = "../utils" }
+utils = { package = "anchor-client-gen-utils", path = "../utils" }

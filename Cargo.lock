@@ -123,6 +123,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "anchor-client-gen-utils"
+version = "0.1.0"
+dependencies = [
+ "Inflector",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_json",
+ "solana-sdk",
+]
+
+[[package]]
 name = "anchor-derive-accounts"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -192,7 +204,7 @@ dependencies = [
 name = "anchor_client_gen"
 version = "0.0.1"
 dependencies = [
- "utils",
+ "anchor-client-gen-utils",
 ]
 
 [[package]]
@@ -1997,18 +2009,6 @@ checksum = "0200d0fc04d809396c2ad43f3c95da3582a2556eba8d453c1087f4120ee352ff"
 dependencies = [
  "fnv",
  "lazy_static",
-]
-
-[[package]]
-name = "utils"
-version = "0.1.0"
-dependencies = [
- "Inflector",
- "proc-macro2",
- "quote",
- "serde",
- "serde_json",
- "solana-sdk",
 ]
 
 [[package]]
