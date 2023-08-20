@@ -1,7 +1,2 @@
-[package]
-name = "anchor-client-gen-rs"
-version = "0.0.1"
-edition = "2021"
-
-[dependencies]
-clap = { version = "4.3.22", features = ["derive"] }
+[workspace]
+members = ["anchor-client-gen", "utils", "example"]

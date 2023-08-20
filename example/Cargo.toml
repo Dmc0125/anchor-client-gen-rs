@@ -1,0 +1,8 @@
+[package]
+name = "example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anchor_client_gen = { path = "../anchor-client-gen", package = "anchor_client_gen" }
+anchor-lang = { version = "0.28.0" }
