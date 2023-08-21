@@ -1,2 +1,2 @@
 [workspace]
-members = ["anchor-client-gen", "utils", "example"]
+members = ["anchor-client-gen", "utils", "example", "example-with-output"]

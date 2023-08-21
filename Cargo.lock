@@ -124,7 +124,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-client-gen-utils"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "Inflector",
  "proc-macro2",
@@ -880,6 +880,16 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor_client_gen",
+ "bytemuck",
+]
+
+[[package]]
+name = "example-with-output"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor_client_gen",
+ "bytemuck",
 ]
 
 [[package]]

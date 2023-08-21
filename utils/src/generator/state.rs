@@ -4,37 +4,6 @@ use inflector::Inflector;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-// Generated types
-// ---------------------
-// use anchor_lang::prelude::*;
-
-// No zero copy type:
-
-// /// This is struct for OraclePriceData
-// #[derive(AnchorSerialize, AnchorDeserialize)]
-// pub struct OraclePriceData {
-//     /// Last oracle price
-//     pub last_price: i64,
-// }
-
-// Zero copy type, repr packed:
-
-// #[zero_copy]
-// #[repr(packed)]
-// pub struct OraclePriceData {
-//     /// Last oracle price
-//     pub last_price: i64,
-// }
-
-// Zero copy unsafe account (zero copy account anchor version <0.27.0), repr C:
-
-// #[account(zero_copy(unsafe))]
-// #[repr(C)]
-// pub struct PerpMarket {
-//     /// Last oracle price
-//     pub last_price: i64,
-// }
-
 use crate::{
     generator::{generate_field_type, generate_fields, Module},
     idl::{EnumVariant, Idl, TypeDef, TypedefType},
@@ -48,9 +17,38 @@ pub fn generate_typedef_attrs(
     types_and_accounts_config: &TypesAndAccountsConfig,
     is_account: bool,
 ) -> TokenStream {
-    let has_repr_c = types_and_accounts_config.repr_c.contains(name);
-    let has_repr_packed = types_and_accounts_config.repr_c.contains(name);
+    let is_zero_copy = types_and_accounts_config.zero_copy.contains(name);
+    let is_zero_copy_unsafe = types_and_accounts_config.zero_copy_unsafe.contains(name);
+    let derive_attr = match (is_zero_copy, is_zero_copy_unsafe, is_account) {
+        (false, false, true) => quote! {
+            #[account]
+        },
+        (true, false, true) => quote! {
+            #[account(zero_copy)]
+            #[derive(AnchorDeserialize, AnchorSerialize)]
+        },
+        (false, true, true) => quote! {
+            #[account(zero_copy(unsafe))]
+            #[derive(AnchorDeserialize, AnchorSerialize)]
+        },
+        (true, false, false) => quote! {
+            #[zero_copy]
+            #[derive(AnchorDeserialize, AnchorSerialize)]
+        },
+        (false, true, false) => quote! {
+            #[zero_copy(unsafe)]
+            #[derive(AnchorDeserialize, AnchorSerialize)]
+        },
+        (false, false, false) => {
+            quote! {
+                #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
+            }
+        }
+        _ => quote! {},
+    };
 
+    let has_repr_c = types_and_accounts_config.repr_c.contains(name);
+    let has_repr_packed = types_and_accounts_config.repr_packed.contains(name);
     let repr_attr = match (has_repr_c, has_repr_packed) {
         (true, true) => {
             quote! {
@@ -70,37 +68,7 @@ pub fn generate_typedef_attrs(
         _ => quote! {},
     };
 
-    let is_zero_copy = types_and_accounts_config.zero_copy.contains(name);
-    let is_zero_copy_unsafe = types_and_accounts_config.zero_copy_unsafe.contains(name);
-    let account_or_type_zero_copy_attr = match (is_zero_copy, is_zero_copy_unsafe, is_account) {
-        (false, false, true) => quote! {
-            #[account]
-        },
-        (true, false, true) => quote! {
-            #[account(zero_copy)]
-        },
-        (false, true, true) => quote! {
-            #[account(zero_copy(unsafe))]
-        },
-        (true, false, false) => quote! {
-            #[zero_copy]
-        },
-        (false, true, false) => quote! {
-            #[zero_copy(unsafe)]
-        },
-        _ => quote! {},
-    };
-
-    let derive_attr = if !is_zero_copy && !is_zero_copy_unsafe && !is_account {
-        quote! {
-            #[derive(AnchorDeserialize, AnchorSerialize, Clone)]
-        }
-    } else {
-        quote! {}
-    };
-
     quote! {
-        #account_or_type_zero_copy_attr
         #derive_attr
         #repr_attr
     }
@@ -183,11 +151,16 @@ pub fn generate(
         let name = TokenStream::from_str(&typedef.name.to_pascal_case()).unwrap();
 
         let doc = generate_doc_comments(typedef.typedef_type.docs());
-        let attrs = generate_typedef_attrs(&typedef.name, types_and_accounts_config, is_account);
+        let attrs = generate_typedef_attrs(
+            &typedef.name.to_pascal_case(),
+            types_and_accounts_config,
+            is_account,
+        );
         let body = match &typedef.typedef_type {
             TypedefType::Enum { variants, .. } => {
                 let variants = generate_enum_variants(idl, variants, generate_for);
                 quote! {
+                    #[derive(Debug)]
                     pub enum #name {
                         #variants
                     }
@@ -205,6 +178,7 @@ pub fn generate(
 
                 quote! {
                     #def
+                    #[derive(Debug)]
                     pub struct #name {
                         #fields
                     }
@@ -280,7 +254,8 @@ mod tests {
             #[doc = " This"]
             #[doc = " is"]
             #[doc = " doc"]
-            #[derive(AnchorDeserialize, AnchorSerialize, Clone)]
+            #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
+            #[derive(Debug)]
             pub struct OrderParams {
                 #[doc = " Order type"]
                 pub order_type: crate::accounts::OrderType,
@@ -311,8 +286,9 @@ mod tests {
         let should_be = quote! {
             use anchor_lang::prelude::*;
 
-            #[derive(AnchorDeserialize, AnchorSerialize, Clone)]
+            #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
             #[derive(Default)]
+            #[derive(Debug)]
             pub struct OrderParams {
                 pub order_id: u8,
             }
@@ -351,6 +327,8 @@ mod tests {
             use anchor_lang::prelude::*;
 
             #[zero_copy]
+            #[derive(AnchorDeserialize, AnchorSerialize)]
+            #[derive(Debug)]
             pub enum OrderParams {
                 Foo(u8, Option<String>),
             }

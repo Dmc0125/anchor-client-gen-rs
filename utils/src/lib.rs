@@ -33,6 +33,24 @@ pub struct TypesAndAccountsConfig {
     pub repr_packed: Vec<String>,
 }
 
+impl TypesAndAccountsConfig {
+    pub fn validate(&self) {
+        let mut duplicates = String::new();
+        for zero_copy in &self.zero_copy {
+            if self.zero_copy_unsafe.contains(zero_copy) {
+                duplicates.push_str(&format!("{}, ", zero_copy.clone()));
+            }
+        }
+
+        if duplicates.len() > 0 {
+            panic!(
+                "zero_copy and zero_copy_unsafe can not contain same identifiers. Duplicates: {}",
+                &duplicates[..duplicates.len() - 2]
+            )
+        }
+    }
+}
+
 #[derive(Default, PartialEq, Debug)]
 pub struct Args {
     /// Path to <idl>.json
@@ -59,15 +77,17 @@ impl Args {
         target: &mut Vec<String>,
         name: &str,
     ) {
-        dbg!(&current);
-
-        if current.ends_with(")") {
-            let val = &current[1..current.len() - 1];
-            target.push(val.to_owned());
-            return;
-        } else {
-            let val = &current[1..current.len()];
-            target.push(val.to_owned());
+        match current.split("(").collect::<Vec<&str>>()[..] {
+            [_, val] => {
+                if val.ends_with(")") {
+                    let val = &val[..val.len() - 1];
+                    target.push(val.to_owned());
+                    return;
+                } else {
+                    target.push(val.to_owned());
+                }
+            }
+            _ => panic!("Invalid {} arg", name),
         }
 
         while let Some(arg) = args.next() {
@@ -83,7 +103,7 @@ impl Args {
     }
 
     pub fn parse(args: String) -> Self {
-        let args_sanitized = args.replace('\"', "");
+        let args_sanitized = args.replace('\"', "").replace('\n', " ");
         let mut args = args_sanitized.split(",").map(|arg| arg.trim());
 
         let mut idl_path: Option<PathBuf> = None;
@@ -135,50 +155,39 @@ impl Args {
                 "skip_events" => {
                     skip_events = true;
                 }
-                _ => match arg.split(" ").collect::<Vec<&str>>()[..] {
-                    [key, value] => {
-                        if !value.starts_with("(") {
-                            panic!("Invalid arg");
-                        }
-
-                        match key {
-                            "zero_copy" => {
-                                Self::parse_inside_parenthesis(
-                                    value,
-                                    &mut args,
-                                    &mut types_and_accounts_config.zero_copy,
-                                    key,
-                                );
-                            }
-                            "zero_copy_unsafe" => {
-                                Self::parse_inside_parenthesis(
-                                    value,
-                                    &mut args,
-                                    &mut types_and_accounts_config.zero_copy_unsafe,
-                                    key,
-                                );
-                            }
-                            "repr_c" => {
-                                Self::parse_inside_parenthesis(
-                                    value,
-                                    &mut args,
-                                    &mut types_and_accounts_config.repr_c,
-                                    key,
-                                );
-                            }
-                            "repr_packed" => {
-                                Self::parse_inside_parenthesis(
-                                    value,
-                                    &mut args,
-                                    &mut types_and_accounts_config.repr_packed,
-                                    key,
-                                );
-                            }
-                            _ => panic!("Invalid arg"),
-                        }
+                _ => {
+                    if arg.starts_with("zero_copy_unsafe") {
+                        Self::parse_inside_parenthesis(
+                            arg,
+                            &mut args,
+                            &mut types_and_accounts_config.zero_copy_unsafe,
+                            "zero_copy_unsafe",
+                        );
+                    } else if arg.starts_with("zero_copy") {
+                        Self::parse_inside_parenthesis(
+                            arg,
+                            &mut args,
+                            &mut types_and_accounts_config.zero_copy,
+                            "zero_copy",
+                        );
+                    } else if arg.starts_with("repr_c") {
+                        Self::parse_inside_parenthesis(
+                            arg,
+                            &mut args,
+                            &mut types_and_accounts_config.repr_c,
+                            "repr_c",
+                        );
+                    } else if arg.starts_with("repr_packed") {
+                        Self::parse_inside_parenthesis(
+                            arg,
+                            &mut args,
+                            &mut types_and_accounts_config.repr_packed,
+                            "repr_packed",
+                        );
+                    } else {
+                        panic!("Invalid arg");
                     }
-                    _ => panic!("Invalid arg"),
-                },
+                }
             }
         }
 
@@ -189,6 +198,8 @@ impl Args {
         if program_id.is_none() {
             panic!("Missing program_id arg");
         }
+
+        types_and_accounts_config.validate();
 
         Self {
             program_id: program_id.unwrap(),
@@ -260,35 +271,27 @@ pub fn generate(args: Args) -> TokenStream {
 
 #[cfg(test)]
 mod tests {
-    use std::{env, path::PathBuf, str::FromStr};
-
-    use proc_macro2::TokenStream;
-    use solana_sdk::system_program;
+    use std::{env, path::PathBuf};
 
     use crate::{Args, TypesAndAccountsConfig};
 
     #[test]
     fn parse_args() {
-        let args = TokenStream::from_str(
-            &format!("idl_path = idl.json,\nzero_copy(PerpMarket),\nzero_copy_unsafe(SomeStruct, SomeOtherStruct, Foo),\nrepr_c(PerpMarket),\nskip_errors,\nprogram_id = {}", system_program::id().to_string()),
-        )
-        .unwrap();
-
-        dbg!(&args);
-
+        let args = "idl_path = \"idl.json\", program_id =\n\"NativeLoader1111111111111111111111111111111\", skip_errors,\nzero_copy_unsafe(PerpMarket, Amm, PoolBalance, InsuranceClaim),\nrepr_c(PerpMarket)".to_owned();
         let cargo_manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-        let parsed = Args::parse(args.to_string());
+        let parsed = Args::parse(args);
         let should_be = Args {
             idl_path: PathBuf::from(cargo_manifest_dir).join("idl.json"),
-            program_id: system_program::id().to_string(),
+            program_id: "NativeLoader1111111111111111111111111111111".to_owned(),
             skip_errors: true,
             skip_events: false,
             types_and_accounts_config: TypesAndAccountsConfig {
-                zero_copy: vec!["PerpMarket".to_owned()],
+                zero_copy: vec![],
                 zero_copy_unsafe: vec![
-                    "SomeStruct".to_owned(),
-                    "SomeOtherStruct".to_owned(),
-                    "Foo".to_owned(),
+                    "PerpMarket".to_owned(),
+                    "Amm".to_owned(),
+                    "PoolBalance".to_owned(),
+                    "InsuranceClaim".to_owned(),
                 ],
                 repr_c: vec!["PerpMarket".to_owned()],
                 repr_packed: vec![],
@@ -301,17 +304,20 @@ mod tests {
     #[test]
     #[should_panic]
     fn parse_args_panic_1() {
-        let args =
-            TokenStream::from_str("idl_path = \"idl.json\", zero_copy(PerpMarket,)").unwrap();
-        Args::parse(args.to_string());
+        Args::parse("idl_path = \"idl.json\",\nzero_copy_unsafe(PerpMarket,)".to_owned());
     }
 
     #[test]
     #[should_panic]
     fn parse_args_panic_2() {
-        let args =
-            TokenStream::from_str("idl_path = idl.json, zero_copy(PerpMarket,), foo = \"some\"")
-                .unwrap();
-        Args::parse(args.to_string());
+        Args::parse("idl_path = \"idl.json\",\nzero_copy_unsafe(PerpMarket)".to_owned());
+    }
+
+    #[test]
+    #[should_panic]
+    fn parse_args_panic_duplicates() {
+        Args::parse(
+            "idl_path = idl.json,\nzero_copy(PerpMarket),\nzero_copy_unsafe(PerpMarket), program_id =\n\"NativeLoader1111111111111111111111111111111\"".to_string(),
+        );
     }
 }
