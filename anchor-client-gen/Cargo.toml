@@ -16,4 +16,4 @@ path = "src/lib.rs"
 proc-macro = true
 
 [dependencies]
-utils = { package = "anchor-client-gen-utils", path = "../utils", version = "0.1.0" }
+utils = { package = "anchor-client-gen-utils", path = "../utils", version = "0.1.1" }
