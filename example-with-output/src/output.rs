@@ -3,6 +3,7 @@
 use std::prelude::rust_2021::*;
 #[macro_use]
 extern crate std;
+use anchor_lang::prelude::Pubkey;
 /// The static program ID
 pub static ID: anchor_lang::solana_program::pubkey::Pubkey = anchor_lang::solana_program::pubkey::Pubkey::new_from_array([
     5u8,
@@ -842,7 +843,7 @@ pub mod accounts {
                             error_origin: Some(
                                 anchor_lang::error::ErrorOrigin::Source(anchor_lang::error::Source {
                                     filename: "example-with-output/src/lib.rs",
-                                    line: 1u32,
+                                    line: 3u32,
                                 }),
                             ),
                             compared_values: None,
@@ -932,7 +933,7 @@ pub mod instructions {
     }
     pub struct InitializeUser();
     impl InitializeUser {
-        pub const DISCRIMINATOR: [u8; 8] = [130, 139, 98, 163, 205, 164, 119, 214];
+        pub const DISCRIMINATOR: [u8; 8] = [111, 17, 185, 250, 60, 122, 38, 254];
         pub fn new(
             accounts: InitializeUserAccounts,
             sub_account_id: u16,
@@ -989,7 +990,7 @@ pub mod instructions {
             accounts: InitializeUserAccounts,
             sub_account_id: u16,
             name: [u8; 32],
-            remaining_accounts: Option<Vec<AccountMeta>>,
+            remaining_accounts: Vec<AccountMeta>,
         ) -> Instruction {
             let data = InitializeUserData {
                 discriminator: Self::DISCRIMINATOR,
@@ -1036,13 +1037,11 @@ pub mod instructions {
                     },
                 ]),
             );
-            if let Some(remaining_accounts) = remaining_accounts {
-                remaining_accounts
-                    .iter()
-                    .for_each(|meta| {
-                        accounts_metas.push(meta.clone());
-                    });
-            }
+            remaining_accounts
+                .iter()
+                .for_each(|meta| {
+                    accounts_metas.push(meta.clone());
+                });
             Instruction::new_with_borsh(crate::id(), &data, accounts_metas)
         }
     }
@@ -1124,5 +1123,52 @@ pub mod events {
     }
     impl anchor_lang::Discriminator for NewUserRecord {
         const DISCRIMINATOR: [u8; 8] = [236, 186, 113, 219, 42, 51, 149, 249];
+    }
+}
+impl Default for types::FeeStructure {
+    fn default() -> Self {
+        Self {
+            fee_tiers: [types::FeeTier::default(); 10],
+            filler_reward_structure: types::OrderFillerRewardStructure::default(),
+            referrer_reward_epoch_upper_bound: 0,
+            flat_filler_fee: 0,
+        }
+    }
+}
+impl Default for types::OracleGuardRails {
+    fn default() -> Self {
+        Self {
+            price_divergence: types::PriceDivergenceGuardRails::default(),
+            validity: types::ValidityGuardRails::default(),
+        }
+    }
+}
+impl Default for accounts::State {
+    fn default() -> Self {
+        Self {
+            admin: Pubkey::default(),
+            whitelist_mint: Pubkey::default(),
+            discount_mint: Pubkey::default(),
+            signer: Pubkey::default(),
+            srm_vault: Pubkey::default(),
+            perp_fee_structure: types::FeeStructure::default(),
+            spot_fee_structure: types::FeeStructure::default(),
+            oracle_guard_rails: types::OracleGuardRails::default(),
+            number_of_authorities: 0,
+            number_of_sub_accounts: 0,
+            lp_cooldown_time: 0,
+            liquidation_margin_buffer_ratio: 0,
+            settlement_duration: 0,
+            number_of_markets: 0,
+            number_of_spot_markets: 0,
+            signer_nonce: 0,
+            min_perp_auction_duration: 0,
+            default_market_order_time_in_force: 0,
+            default_spot_auction_duration: 0,
+            exchange_status: 0,
+            liquidation_duration: 0,
+            initial_pct_to_liquidate: 0,
+            padding: [0; 14],
+        }
     }
 }

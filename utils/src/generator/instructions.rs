@@ -70,15 +70,14 @@ pub fn generate(idl: &Idl) -> TokenStream {
     let mut generated = TokenStream::new();
 
     for instruction in &idl.instructions {
-        let name_camel_case = &instruction.name;
-        let name_pascal_case = name_camel_case.to_pascal_case();
+        let name_pascal_case = instruction.name.to_pascal_case();
         let ix_struct_name = TokenStream::from_str(&name_pascal_case).unwrap();
         let data_struct_name = TokenStream::from_str(&format!("{}Data", name_pascal_case)).unwrap();
         let accounts_struct_name =
-            TokenStream::from_str(&format!("{}Accounts", name_camel_case).to_pascal_case())
+            TokenStream::from_str(&format!("{}Accounts", instruction.name).to_pascal_case())
                 .unwrap();
 
-        let discriminator = generate_discriminator(&name_camel_case);
+        let discriminator = generate_discriminator(&instruction.name.to_snake_case());
         let (accounts_struct_props, accounts_metas_elements) =
             generate_accounts(&instruction.accounts);
 
@@ -128,7 +127,7 @@ pub fn generate(idl: &Idl) -> TokenStream {
                 pub fn new_with_remaining_accounts(
                     #fn_accounts_arg
                     #fn_data_args
-                    remaining_accounts: Option<Vec<AccountMeta>>,
+                    remaining_accounts: Vec<AccountMeta>,
                 ) -> Instruction {
                     let data = #data_struct_name {
                         discriminator: Self::DISCRIMINATOR,
@@ -139,11 +138,9 @@ pub fn generate(idl: &Idl) -> TokenStream {
                         #accounts_metas_elements
                     ];
 
-                    if let Some(remaining_accounts) = remaining_accounts {
-                        remaining_accounts.iter().for_each(|meta| {
-                            accounts_metas.push(meta.clone());
-                        });
-                    }
+                    remaining_accounts.iter().for_each(|meta| {
+                        accounts_metas.push(meta.clone());
+                    });
 
                     Instruction::new_with_borsh(crate::id(), &data, accounts_metas)
                 }
@@ -201,7 +198,7 @@ mod tests {
 
         let generated = generate(&idl);
 
-        let discriminator = generate_discriminator(&"placePerpOrder".to_owned());
+        let discriminator = generate_discriminator(&"place_perp_order".to_owned());
         let should_be = quote! {
             use anchor_lang::{
                 prelude::{AccountMeta, borsh},
@@ -247,7 +244,7 @@ mod tests {
                 pub fn new_with_remaining_accounts(
                     accounts: PlacePerpOrderAccounts,
                     order_params: crate::types::OrderParams,
-                    remaining_accounts: Option<Vec<AccountMeta>>,
+                    remaining_accounts: Vec<AccountMeta>,
                 ) -> Instruction {
                     let data = PlacePerpOrderData {
                         discriminator: Self::DISCRIMINATOR,
@@ -262,11 +259,9 @@ mod tests {
                         },
                     ];
 
-                    if let Some(remaining_accounts) = remaining_accounts {
-                        remaining_accounts.iter().for_each(|meta| {
-                            accounts_metas.push(meta.clone());
-                        });
-                    }
+                    remaining_accounts.iter().for_each(|meta| {
+                        accounts_metas.push(meta.clone());
+                    });
 
                     Instruction::new_with_borsh(crate::id(), &data, accounts_metas)
                 }
