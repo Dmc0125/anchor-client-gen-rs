@@ -5,40 +5,12 @@ use std::prelude::rust_2021::*;
 extern crate std;
 use anchor_lang::prelude::Pubkey;
 /// The static program ID
-pub static ID: anchor_lang::solana_program::pubkey::Pubkey = anchor_lang::solana_program::pubkey::Pubkey::new_from_array([
-    5u8,
-    135u8,
-    132u8,
-    191u8,
-    20u8,
-    139u8,
-    164u8,
-    40u8,
-    47u8,
-    176u8,
-    18u8,
-    87u8,
-    72u8,
-    136u8,
-    169u8,
-    241u8,
-    83u8,
-    160u8,
-    125u8,
-    173u8,
-    247u8,
-    101u8,
-    192u8,
-    69u8,
-    92u8,
-    154u8,
-    151u8,
-    3u8,
-    128u8,
-    0u8,
-    0u8,
-    0u8,
-]);
+pub static ID: anchor_lang::solana_program::pubkey::Pubkey =
+    anchor_lang::solana_program::pubkey::Pubkey::new_from_array([
+        5u8, 135u8, 132u8, 191u8, 20u8, 139u8, 164u8, 40u8, 47u8, 176u8, 18u8, 87u8, 72u8, 136u8,
+        169u8, 241u8, 83u8, 160u8, 125u8, 173u8, 247u8, 101u8, 192u8, 69u8, 92u8, 154u8, 151u8,
+        3u8, 128u8, 0u8, 0u8, 0u8,
+    ]);
 /// Confirms that a given pubkey is equivalent to the program ID
 pub fn check_id(id: &anchor_lang::solana_program::pubkey::Pubkey) -> bool {
     id == &ID
@@ -54,6 +26,16 @@ pub mod types {
         pub validity: ValidityGuardRails,
     }
     #[automatically_derived]
+    impl ::core::default::Default for OracleGuardRails {
+        #[inline]
+        fn default() -> OracleGuardRails {
+            OracleGuardRails {
+                price_divergence: ::core::default::Default::default(),
+                validity: ::core::default::Default::default(),
+            }
+        }
+    }
+    #[automatically_derived]
     impl ::core::fmt::Debug for OracleGuardRails {
         fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
             ::core::fmt::Formatter::debug_struct_field2_finish(
@@ -66,6 +48,8 @@ pub mod types {
             )
         }
     }
+    #[automatically_derived]
+    impl ::core::marker::Copy for OracleGuardRails {}
     impl borsh::de::BorshDeserialize for OracleGuardRails
     where
         PriceDivergenceGuardRails: borsh::BorshDeserialize,
@@ -98,16 +82,25 @@ pub mod types {
     impl ::core::clone::Clone for OracleGuardRails {
         #[inline]
         fn clone(&self) -> OracleGuardRails {
-            let _: ::core::clone::AssertParamIsClone<PriceDivergenceGuardRails>;
-            let _: ::core::clone::AssertParamIsClone<ValidityGuardRails>;
-            *self
+            OracleGuardRails {
+                price_divergence: ::core::clone::Clone::clone(&self.price_divergence),
+                validity: ::core::clone::Clone::clone(&self.validity),
+            }
         }
     }
-    #[automatically_derived]
-    impl ::core::marker::Copy for OracleGuardRails {}
     pub struct PriceDivergenceGuardRails {
         pub mark_oracle_divergence_numerator: u64,
         pub mark_oracle_divergence_denominator: u64,
+    }
+    #[automatically_derived]
+    impl ::core::default::Default for PriceDivergenceGuardRails {
+        #[inline]
+        fn default() -> PriceDivergenceGuardRails {
+            PriceDivergenceGuardRails {
+                mark_oracle_divergence_numerator: ::core::default::Default::default(),
+                mark_oracle_divergence_denominator: ::core::default::Default::default(),
+            }
+        }
     }
     #[automatically_derived]
     impl ::core::fmt::Debug for PriceDivergenceGuardRails {
@@ -123,15 +116,7 @@ pub mod types {
         }
     }
     #[automatically_derived]
-    impl ::core::default::Default for PriceDivergenceGuardRails {
-        #[inline]
-        fn default() -> PriceDivergenceGuardRails {
-            PriceDivergenceGuardRails {
-                mark_oracle_divergence_numerator: ::core::default::Default::default(),
-                mark_oracle_divergence_denominator: ::core::default::Default::default(),
-            }
-        }
-    }
+    impl ::core::marker::Copy for PriceDivergenceGuardRails {}
     impl borsh::de::BorshDeserialize for PriceDivergenceGuardRails
     where
         u64: borsh::BorshDeserialize,
@@ -159,14 +144,8 @@ pub mod types {
             &self,
             writer: &mut W,
         ) -> ::core::result::Result<(), borsh::maybestd::io::Error> {
-            borsh::BorshSerialize::serialize(
-                &self.mark_oracle_divergence_numerator,
-                writer,
-            )?;
-            borsh::BorshSerialize::serialize(
-                &self.mark_oracle_divergence_denominator,
-                writer,
-            )?;
+            borsh::BorshSerialize::serialize(&self.mark_oracle_divergence_numerator, writer)?;
+            borsh::BorshSerialize::serialize(&self.mark_oracle_divergence_denominator, writer)?;
             Ok(())
         }
     }
@@ -174,17 +153,33 @@ pub mod types {
     impl ::core::clone::Clone for PriceDivergenceGuardRails {
         #[inline]
         fn clone(&self) -> PriceDivergenceGuardRails {
-            let _: ::core::clone::AssertParamIsClone<u64>;
-            *self
+            PriceDivergenceGuardRails {
+                mark_oracle_divergence_numerator: ::core::clone::Clone::clone(
+                    &self.mark_oracle_divergence_numerator,
+                ),
+                mark_oracle_divergence_denominator: ::core::clone::Clone::clone(
+                    &self.mark_oracle_divergence_denominator,
+                ),
+            }
         }
     }
-    #[automatically_derived]
-    impl ::core::marker::Copy for PriceDivergenceGuardRails {}
     pub struct ValidityGuardRails {
         pub slots_before_stale_for_amm: i64,
         pub slots_before_stale_for_margin: i64,
         pub confidence_interval_max_size: u64,
         pub too_volatile_ratio: i64,
+    }
+    #[automatically_derived]
+    impl ::core::default::Default for ValidityGuardRails {
+        #[inline]
+        fn default() -> ValidityGuardRails {
+            ValidityGuardRails {
+                slots_before_stale_for_amm: ::core::default::Default::default(),
+                slots_before_stale_for_margin: ::core::default::Default::default(),
+                confidence_interval_max_size: ::core::default::Default::default(),
+                too_volatile_ratio: ::core::default::Default::default(),
+            }
+        }
     }
     #[automatically_derived]
     impl ::core::fmt::Debug for ValidityGuardRails {
@@ -204,17 +199,7 @@ pub mod types {
         }
     }
     #[automatically_derived]
-    impl ::core::default::Default for ValidityGuardRails {
-        #[inline]
-        fn default() -> ValidityGuardRails {
-            ValidityGuardRails {
-                slots_before_stale_for_amm: ::core::default::Default::default(),
-                slots_before_stale_for_margin: ::core::default::Default::default(),
-                confidence_interval_max_size: ::core::default::Default::default(),
-                too_volatile_ratio: ::core::default::Default::default(),
-            }
-        }
-    }
+    impl ::core::marker::Copy for ValidityGuardRails {}
     impl borsh::de::BorshDeserialize for ValidityGuardRails
     where
         i64: borsh::BorshDeserialize,
@@ -226,15 +211,9 @@ pub mod types {
             reader: &mut R,
         ) -> ::core::result::Result<Self, borsh::maybestd::io::Error> {
             Ok(Self {
-                slots_before_stale_for_amm: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
-                slots_before_stale_for_margin: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
-                confidence_interval_max_size: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
+                slots_before_stale_for_amm: borsh::BorshDeserialize::deserialize_reader(reader)?,
+                slots_before_stale_for_margin: borsh::BorshDeserialize::deserialize_reader(reader)?,
+                confidence_interval_max_size: borsh::BorshDeserialize::deserialize_reader(reader)?,
                 too_volatile_ratio: borsh::BorshDeserialize::deserialize_reader(reader)?,
             })
         }
@@ -251,14 +230,8 @@ pub mod types {
             writer: &mut W,
         ) -> ::core::result::Result<(), borsh::maybestd::io::Error> {
             borsh::BorshSerialize::serialize(&self.slots_before_stale_for_amm, writer)?;
-            borsh::BorshSerialize::serialize(
-                &self.slots_before_stale_for_margin,
-                writer,
-            )?;
-            borsh::BorshSerialize::serialize(
-                &self.confidence_interval_max_size,
-                writer,
-            )?;
+            borsh::BorshSerialize::serialize(&self.slots_before_stale_for_margin, writer)?;
+            borsh::BorshSerialize::serialize(&self.confidence_interval_max_size, writer)?;
             borsh::BorshSerialize::serialize(&self.too_volatile_ratio, writer)?;
             Ok(())
         }
@@ -267,13 +240,21 @@ pub mod types {
     impl ::core::clone::Clone for ValidityGuardRails {
         #[inline]
         fn clone(&self) -> ValidityGuardRails {
-            let _: ::core::clone::AssertParamIsClone<i64>;
-            let _: ::core::clone::AssertParamIsClone<u64>;
-            *self
+            ValidityGuardRails {
+                slots_before_stale_for_amm: ::core::clone::Clone::clone(
+                    &self.slots_before_stale_for_amm,
+                ),
+                slots_before_stale_for_margin: ::core::clone::Clone::clone(
+                    &self.slots_before_stale_for_margin,
+                ),
+                confidence_interval_max_size: ::core::clone::Clone::clone(
+                    &self.confidence_interval_max_size,
+                ),
+                too_volatile_ratio: ::core::clone::Clone::clone(&self.too_volatile_ratio),
+            }
         }
     }
-    #[automatically_derived]
-    impl ::core::marker::Copy for ValidityGuardRails {}
+    #[repr(C)]
     pub struct FeeStructure {
         pub fee_tiers: [FeeTier; 10],
         pub filler_reward_structure: OrderFillerRewardStructure,
@@ -309,9 +290,7 @@ pub mod types {
         ) -> ::core::result::Result<Self, borsh::maybestd::io::Error> {
             Ok(Self {
                 fee_tiers: borsh::BorshDeserialize::deserialize_reader(reader)?,
-                filler_reward_structure: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
+                filler_reward_structure: borsh::BorshDeserialize::deserialize_reader(reader)?,
                 referrer_reward_epoch_upper_bound: borsh::BorshDeserialize::deserialize_reader(
                     reader,
                 )?,
@@ -332,14 +311,15 @@ pub mod types {
         ) -> ::core::result::Result<(), borsh::maybestd::io::Error> {
             borsh::BorshSerialize::serialize(&self.fee_tiers, writer)?;
             borsh::BorshSerialize::serialize(&self.filler_reward_structure, writer)?;
-            borsh::BorshSerialize::serialize(
-                &self.referrer_reward_epoch_upper_bound,
-                writer,
-            )?;
+            borsh::BorshSerialize::serialize(&self.referrer_reward_epoch_upper_bound, writer)?;
             borsh::BorshSerialize::serialize(&self.flat_filler_fee, writer)?;
             Ok(())
         }
     }
+    #[automatically_derived]
+    impl FeeStructure {}
+    #[automatically_derived]
+    impl ::core::marker::Copy for FeeStructure {}
     #[automatically_derived]
     impl ::core::clone::Clone for FeeStructure {
         #[inline]
@@ -350,8 +330,6 @@ pub mod types {
             *self
         }
     }
-    #[automatically_derived]
-    impl ::core::marker::Copy for FeeStructure {}
     pub struct FeeTier {
         pub fee_numerator: u32,
         pub fee_denominator: u32,
@@ -361,6 +339,22 @@ pub mod types {
         pub referrer_reward_denominator: u32,
         pub referee_fee_numerator: u32,
         pub referee_fee_denominator: u32,
+    }
+    #[automatically_derived]
+    impl ::core::default::Default for FeeTier {
+        #[inline]
+        fn default() -> FeeTier {
+            FeeTier {
+                fee_numerator: ::core::default::Default::default(),
+                fee_denominator: ::core::default::Default::default(),
+                maker_rebate_numerator: ::core::default::Default::default(),
+                maker_rebate_denominator: ::core::default::Default::default(),
+                referrer_reward_numerator: ::core::default::Default::default(),
+                referrer_reward_denominator: ::core::default::Default::default(),
+                referee_fee_numerator: ::core::default::Default::default(),
+                referee_fee_denominator: ::core::default::Default::default(),
+            }
+        }
     }
     #[automatically_derived]
     impl ::core::fmt::Debug for FeeTier {
@@ -385,30 +379,11 @@ pub mod types {
                 &self.referee_fee_numerator,
                 &&self.referee_fee_denominator,
             ];
-            ::core::fmt::Formatter::debug_struct_fields_finish(
-                f,
-                "FeeTier",
-                names,
-                values,
-            )
+            ::core::fmt::Formatter::debug_struct_fields_finish(f, "FeeTier", names, values)
         }
     }
     #[automatically_derived]
-    impl ::core::default::Default for FeeTier {
-        #[inline]
-        fn default() -> FeeTier {
-            FeeTier {
-                fee_numerator: ::core::default::Default::default(),
-                fee_denominator: ::core::default::Default::default(),
-                maker_rebate_numerator: ::core::default::Default::default(),
-                maker_rebate_denominator: ::core::default::Default::default(),
-                referrer_reward_numerator: ::core::default::Default::default(),
-                referrer_reward_denominator: ::core::default::Default::default(),
-                referee_fee_numerator: ::core::default::Default::default(),
-                referee_fee_denominator: ::core::default::Default::default(),
-            }
-        }
-    }
+    impl ::core::marker::Copy for FeeTier {}
     impl borsh::de::BorshDeserialize for FeeTier
     where
         u32: borsh::BorshDeserialize,
@@ -426,24 +401,12 @@ pub mod types {
             Ok(Self {
                 fee_numerator: borsh::BorshDeserialize::deserialize_reader(reader)?,
                 fee_denominator: borsh::BorshDeserialize::deserialize_reader(reader)?,
-                maker_rebate_numerator: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
-                maker_rebate_denominator: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
-                referrer_reward_numerator: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
-                referrer_reward_denominator: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
-                referee_fee_numerator: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
-                referee_fee_denominator: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
+                maker_rebate_numerator: borsh::BorshDeserialize::deserialize_reader(reader)?,
+                maker_rebate_denominator: borsh::BorshDeserialize::deserialize_reader(reader)?,
+                referrer_reward_numerator: borsh::BorshDeserialize::deserialize_reader(reader)?,
+                referrer_reward_denominator: borsh::BorshDeserialize::deserialize_reader(reader)?,
+                referee_fee_numerator: borsh::BorshDeserialize::deserialize_reader(reader)?,
+                referee_fee_denominator: borsh::BorshDeserialize::deserialize_reader(reader)?,
             })
         }
     }
@@ -477,16 +440,39 @@ pub mod types {
     impl ::core::clone::Clone for FeeTier {
         #[inline]
         fn clone(&self) -> FeeTier {
-            let _: ::core::clone::AssertParamIsClone<u32>;
-            *self
+            FeeTier {
+                fee_numerator: ::core::clone::Clone::clone(&self.fee_numerator),
+                fee_denominator: ::core::clone::Clone::clone(&self.fee_denominator),
+                maker_rebate_numerator: ::core::clone::Clone::clone(&self.maker_rebate_numerator),
+                maker_rebate_denominator: ::core::clone::Clone::clone(
+                    &self.maker_rebate_denominator,
+                ),
+                referrer_reward_numerator: ::core::clone::Clone::clone(
+                    &self.referrer_reward_numerator,
+                ),
+                referrer_reward_denominator: ::core::clone::Clone::clone(
+                    &self.referrer_reward_denominator,
+                ),
+                referee_fee_numerator: ::core::clone::Clone::clone(&self.referee_fee_numerator),
+                referee_fee_denominator: ::core::clone::Clone::clone(&self.referee_fee_denominator),
+            }
         }
     }
-    #[automatically_derived]
-    impl ::core::marker::Copy for FeeTier {}
     pub struct OrderFillerRewardStructure {
         pub reward_numerator: u32,
         pub reward_denominator: u32,
         pub time_based_reward_lower_bound: u128,
+    }
+    #[automatically_derived]
+    impl ::core::default::Default for OrderFillerRewardStructure {
+        #[inline]
+        fn default() -> OrderFillerRewardStructure {
+            OrderFillerRewardStructure {
+                reward_numerator: ::core::default::Default::default(),
+                reward_denominator: ::core::default::Default::default(),
+                time_based_reward_lower_bound: ::core::default::Default::default(),
+            }
+        }
     }
     #[automatically_derived]
     impl ::core::fmt::Debug for OrderFillerRewardStructure {
@@ -504,16 +490,7 @@ pub mod types {
         }
     }
     #[automatically_derived]
-    impl ::core::default::Default for OrderFillerRewardStructure {
-        #[inline]
-        fn default() -> OrderFillerRewardStructure {
-            OrderFillerRewardStructure {
-                reward_numerator: ::core::default::Default::default(),
-                reward_denominator: ::core::default::Default::default(),
-                time_based_reward_lower_bound: ::core::default::Default::default(),
-            }
-        }
-    }
+    impl ::core::marker::Copy for OrderFillerRewardStructure {}
     impl borsh::de::BorshDeserialize for OrderFillerRewardStructure
     where
         u32: borsh::BorshDeserialize,
@@ -526,9 +503,7 @@ pub mod types {
             Ok(Self {
                 reward_numerator: borsh::BorshDeserialize::deserialize_reader(reader)?,
                 reward_denominator: borsh::BorshDeserialize::deserialize_reader(reader)?,
-                time_based_reward_lower_bound: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
+                time_based_reward_lower_bound: borsh::BorshDeserialize::deserialize_reader(reader)?,
             })
         }
     }
@@ -544,10 +519,7 @@ pub mod types {
         ) -> ::core::result::Result<(), borsh::maybestd::io::Error> {
             borsh::BorshSerialize::serialize(&self.reward_numerator, writer)?;
             borsh::BorshSerialize::serialize(&self.reward_denominator, writer)?;
-            borsh::BorshSerialize::serialize(
-                &self.time_based_reward_lower_bound,
-                writer,
-            )?;
+            borsh::BorshSerialize::serialize(&self.time_based_reward_lower_bound, writer)?;
             Ok(())
         }
     }
@@ -555,13 +527,15 @@ pub mod types {
     impl ::core::clone::Clone for OrderFillerRewardStructure {
         #[inline]
         fn clone(&self) -> OrderFillerRewardStructure {
-            let _: ::core::clone::AssertParamIsClone<u32>;
-            let _: ::core::clone::AssertParamIsClone<u128>;
-            *self
+            OrderFillerRewardStructure {
+                reward_numerator: ::core::clone::Clone::clone(&self.reward_numerator),
+                reward_denominator: ::core::clone::Clone::clone(&self.reward_denominator),
+                time_based_reward_lower_bound: ::core::clone::Clone::clone(
+                    &self.time_based_reward_lower_bound,
+                ),
+            }
         }
     }
-    #[automatically_derived]
-    impl ::core::marker::Copy for OrderFillerRewardStructure {}
 }
 pub mod accounts {
     use anchor_lang::prelude::*;
@@ -685,40 +659,24 @@ pub mod accounts {
                 perp_fee_structure: borsh::BorshDeserialize::deserialize_reader(reader)?,
                 spot_fee_structure: borsh::BorshDeserialize::deserialize_reader(reader)?,
                 oracle_guard_rails: borsh::BorshDeserialize::deserialize_reader(reader)?,
-                number_of_authorities: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
-                number_of_sub_accounts: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
+                number_of_authorities: borsh::BorshDeserialize::deserialize_reader(reader)?,
+                number_of_sub_accounts: borsh::BorshDeserialize::deserialize_reader(reader)?,
                 lp_cooldown_time: borsh::BorshDeserialize::deserialize_reader(reader)?,
                 liquidation_margin_buffer_ratio: borsh::BorshDeserialize::deserialize_reader(
                     reader,
                 )?,
-                settlement_duration: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
+                settlement_duration: borsh::BorshDeserialize::deserialize_reader(reader)?,
                 number_of_markets: borsh::BorshDeserialize::deserialize_reader(reader)?,
-                number_of_spot_markets: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
+                number_of_spot_markets: borsh::BorshDeserialize::deserialize_reader(reader)?,
                 signer_nonce: borsh::BorshDeserialize::deserialize_reader(reader)?,
-                min_perp_auction_duration: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
+                min_perp_auction_duration: borsh::BorshDeserialize::deserialize_reader(reader)?,
                 default_market_order_time_in_force: borsh::BorshDeserialize::deserialize_reader(
                     reader,
                 )?,
-                default_spot_auction_duration: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
+                default_spot_auction_duration: borsh::BorshDeserialize::deserialize_reader(reader)?,
                 exchange_status: borsh::BorshDeserialize::deserialize_reader(reader)?,
-                liquidation_duration: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
-                initial_pct_to_liquidate: borsh::BorshDeserialize::deserialize_reader(
-                    reader,
-                )?,
+                liquidation_duration: borsh::BorshDeserialize::deserialize_reader(reader)?,
+                initial_pct_to_liquidate: borsh::BorshDeserialize::deserialize_reader(reader)?,
                 padding: borsh::BorshDeserialize::deserialize_reader(reader)?,
             })
         }
@@ -764,23 +722,14 @@ pub mod accounts {
             borsh::BorshSerialize::serialize(&self.number_of_authorities, writer)?;
             borsh::BorshSerialize::serialize(&self.number_of_sub_accounts, writer)?;
             borsh::BorshSerialize::serialize(&self.lp_cooldown_time, writer)?;
-            borsh::BorshSerialize::serialize(
-                &self.liquidation_margin_buffer_ratio,
-                writer,
-            )?;
+            borsh::BorshSerialize::serialize(&self.liquidation_margin_buffer_ratio, writer)?;
             borsh::BorshSerialize::serialize(&self.settlement_duration, writer)?;
             borsh::BorshSerialize::serialize(&self.number_of_markets, writer)?;
             borsh::BorshSerialize::serialize(&self.number_of_spot_markets, writer)?;
             borsh::BorshSerialize::serialize(&self.signer_nonce, writer)?;
             borsh::BorshSerialize::serialize(&self.min_perp_auction_duration, writer)?;
-            borsh::BorshSerialize::serialize(
-                &self.default_market_order_time_in_force,
-                writer,
-            )?;
-            borsh::BorshSerialize::serialize(
-                &self.default_spot_auction_duration,
-                writer,
-            )?;
+            borsh::BorshSerialize::serialize(&self.default_market_order_time_in_force, writer)?;
+            borsh::BorshSerialize::serialize(&self.default_spot_auction_duration, writer)?;
             borsh::BorshSerialize::serialize(&self.exchange_status, writer)?;
             borsh::BorshSerialize::serialize(&self.liquidation_duration, writer)?;
             borsh::BorshSerialize::serialize(&self.initial_pct_to_liquidate, writer)?;
@@ -826,29 +775,27 @@ pub mod accounts {
     impl anchor_lang::AccountDeserialize for State {
         fn try_deserialize(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
             if buf.len() < [216, 146, 107, 94, 104, 75, 182, 177].len() {
-                return Err(
-                    anchor_lang::error::ErrorCode::AccountDiscriminatorNotFound.into(),
-                );
+                return Err(anchor_lang::error::ErrorCode::AccountDiscriminatorNotFound.into());
             }
             let given_disc = &buf[..8];
             if &[216, 146, 107, 94, 104, 75, 182, 177] != given_disc {
                 return Err(
                     anchor_lang::error::Error::from(anchor_lang::error::AnchorError {
-                            error_name: anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch
-                                .name(),
-                            error_code_number: anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch
-                                .into(),
-                            error_msg: anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch
-                                .to_string(),
-                            error_origin: Some(
-                                anchor_lang::error::ErrorOrigin::Source(anchor_lang::error::Source {
-                                    filename: "example-with-output/src/lib.rs",
-                                    line: 3u32,
-                                }),
-                            ),
-                            compared_values: None,
-                        })
-                        .with_account_name("State"),
+                        error_name: anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch
+                            .name(),
+                        error_code_number:
+                            anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch.into(),
+                        error_msg: anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch
+                            .to_string(),
+                        error_origin: Some(anchor_lang::error::ErrorOrigin::Source(
+                            anchor_lang::error::Source {
+                                filename: "example-with-output/src/lib.rs",
+                                line: 3u32,
+                            },
+                        )),
+                        compared_values: None,
+                    })
+                    .with_account_name("State"),
                 );
             }
             Self::try_deserialize_unchecked(buf)
@@ -868,7 +815,7 @@ pub mod accounts {
 }
 pub mod instructions {
     use anchor_lang::{
-        prelude::{AccountMeta, borsh},
+        prelude::{borsh, AccountMeta},
         solana_program::instruction::Instruction,
     };
     pub struct InitializeUserAccounts {
@@ -990,7 +937,7 @@ pub mod instructions {
             accounts: InitializeUserAccounts,
             sub_account_id: u16,
             name: [u8; 32],
-            remaining_accounts: Vec<AccountMeta>,
+            remaining_accounts: &Vec<AccountMeta>,
         ) -> Instruction {
             let data = InitializeUserData {
                 discriminator: Self::DISCRIMINATOR,
@@ -1037,11 +984,9 @@ pub mod instructions {
                     },
                 ]),
             );
-            remaining_accounts
-                .iter()
-                .for_each(|meta| {
-                    accounts_metas.push(meta.clone());
-                });
+            remaining_accounts.iter().for_each(|meta| {
+                accounts_metas.push(meta.clone());
+            });
             Instruction::new_with_borsh(crate::id(), &data, accounts_metas)
         }
     }
@@ -1057,16 +1002,16 @@ pub mod events {
         pub referrer: ::anchor_lang::prelude::Pubkey,
     }
     #[automatically_derived]
-    impl ::core::default::Default for NewUserRecord {
+    impl ::core::clone::Clone for NewUserRecord {
         #[inline]
-        fn default() -> NewUserRecord {
+        fn clone(&self) -> NewUserRecord {
             NewUserRecord {
-                ts: ::core::default::Default::default(),
-                user_authority: ::core::default::Default::default(),
-                user: ::core::default::Default::default(),
-                sub_account_id: ::core::default::Default::default(),
-                name: ::core::default::Default::default(),
-                referrer: ::core::default::Default::default(),
+                ts: ::core::clone::Clone::clone(&self.ts),
+                user_authority: ::core::clone::Clone::clone(&self.user_authority),
+                user: ::core::clone::Clone::clone(&self.user),
+                sub_account_id: ::core::clone::Clone::clone(&self.sub_account_id),
+                name: ::core::clone::Clone::clone(&self.name),
+                referrer: ::core::clone::Clone::clone(&self.referrer),
             }
         }
     }
@@ -1132,14 +1077,6 @@ impl Default for types::FeeStructure {
             filler_reward_structure: types::OrderFillerRewardStructure::default(),
             referrer_reward_epoch_upper_bound: 0,
             flat_filler_fee: 0,
-        }
-    }
-}
-impl Default for types::OracleGuardRails {
-    fn default() -> Self {
-        Self {
-            price_divergence: types::PriceDivergenceGuardRails::default(),
-            validity: types::ValidityGuardRails::default(),
         }
     }
 }

@@ -6,7 +6,11 @@ use quote::quote;
 
 use crate::{
     generator::{generate_field_type, generate_fields, Module},
-    idl::{EnumVariant, Idl, TypeDef, TypedefType},
+    idl::{
+        EnumVariantJsonDefinition, IdlJsonDefinition, TypeDefJsonDefinition,
+        TypedefTypeJsonDefinition,
+    },
+    meta::Meta,
     TypesAndAccountsConfig,
 };
 
@@ -16,13 +20,23 @@ pub fn generate_typedef_attrs(
     name: &String,
     types_and_accounts_config: &TypesAndAccountsConfig,
     is_account: bool,
+    can_copy: bool,
 ) -> TokenStream {
     let is_zero_copy = types_and_accounts_config.zero_copy.contains(name);
     let is_zero_copy_unsafe = types_and_accounts_config.zero_copy_unsafe.contains(name);
     let derive_attr = match (is_zero_copy, is_zero_copy_unsafe, is_account) {
-        (false, false, true) => quote! {
-            #[account]
-        },
+        (false, false, true) => {
+            if can_copy {
+                quote! {
+                    #[account]
+                    #[derive(Copy)]
+                }
+            } else {
+                quote! {
+                    #[account]
+                }
+            }
+        }
         (true, false, true) => quote! {
             #[account(zero_copy)]
             #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -40,8 +54,15 @@ pub fn generate_typedef_attrs(
             #[derive(AnchorDeserialize, AnchorSerialize)]
         },
         (false, false, false) => {
+            let copy_attr = if can_copy {
+                quote! { #[derive(Copy)] }
+            } else {
+                quote! {}
+            };
+
             quote! {
-                #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
+                #[derive(AnchorDeserialize, AnchorSerialize, Clone)]
+                #copy_attr
             }
         }
         _ => quote! {},
@@ -75,15 +96,15 @@ pub fn generate_typedef_attrs(
 }
 
 pub fn generate_enum_variants(
-    idl: &Idl,
-    variants: &Vec<EnumVariant>,
+    idl: &IdlJsonDefinition,
+    variants: &Vec<EnumVariantJsonDefinition>,
     generate_for: Module,
 ) -> TokenStream {
     let mut generated = TokenStream::new();
 
     for variant in variants {
         let generated_variant = match variant.clone() {
-            EnumVariant::UnitLike { docs, name } => {
+            EnumVariantJsonDefinition::UnitLike { docs, name } => {
                 let name = TokenStream::from_str(&name.to_pascal_case()).unwrap();
                 let doc = generate_doc_comments(docs);
 
@@ -92,7 +113,7 @@ pub fn generate_enum_variants(
                     #name,
                 }
             }
-            EnumVariant::Tuple {
+            EnumVariantJsonDefinition::Tuple {
                 docs,
                 name,
                 types: fields,
@@ -102,7 +123,7 @@ pub fn generate_enum_variants(
 
                 let mut generated_field_types = String::new();
                 fields.iter().for_each(|field_type| {
-                    let (generated, _) = generate_field_type(idl, field_type, generate_for);
+                    let generated = generate_field_type(idl, field_type, generate_for);
                     generated_field_types.push_str(&format!("{},", generated.to_string()));
                 });
                 let tuple_types = TokenStream::from_str(
@@ -115,10 +136,10 @@ pub fn generate_enum_variants(
                     #name(#tuple_types),
                 }
             }
-            EnumVariant::Struct { docs, name, fields } => {
+            EnumVariantJsonDefinition::Struct { docs, name, fields } => {
                 let name = TokenStream::from_str(&name.to_pascal_case()).unwrap();
                 let doc = generate_doc_comments(docs);
-                let (generated_fields, _) = generate_fields(idl, &fields, generate_for);
+                let generated_fields = generate_fields(idl, &fields, generate_for, true);
 
                 quote! {
                     #doc
@@ -135,9 +156,10 @@ pub fn generate_enum_variants(
 }
 
 pub fn generate(
-    idl: &Idl,
-    idl_state_defs: &Vec<TypeDef>,
+    idl: &IdlJsonDefinition,
+    idl_state_defs: &Vec<TypeDefJsonDefinition>,
     types_and_accounts_config: &TypesAndAccountsConfig,
+    meta: &Meta,
     is_account: bool,
 ) -> TokenStream {
     let mut generated_typedefs = TokenStream::new();
@@ -148,37 +170,39 @@ pub fn generate(
     };
 
     for typedef in idl_state_defs {
-        let name = TokenStream::from_str(&typedef.name.to_pascal_case()).unwrap();
+        let json_name = &typedef.name;
+        let name = TokenStream::from_str(&json_name.to_pascal_case()).unwrap();
 
         let doc = generate_doc_comments(typedef.typedef_type.docs());
+
+        let can_copy = meta.can_copy.get(json_name).is_some();
         let attrs = generate_typedef_attrs(
             &typedef.name.to_pascal_case(),
             types_and_accounts_config,
             is_account,
+            can_copy,
         );
+
         let body = match &typedef.typedef_type {
-            TypedefType::Enum { variants, .. } => {
+            TypedefTypeJsonDefinition::Enum { variants, .. } => {
                 let variants = generate_enum_variants(idl, variants, generate_for);
+
                 quote! {
-                    #[derive(Debug)]
                     pub enum #name {
                         #variants
                     }
                 }
             }
-            TypedefType::Struct { fields, .. } => {
-                let (fields, has_defined) = generate_fields(idl, fields, generate_for);
-                let def = if has_defined {
-                    quote! {}
+            TypedefTypeJsonDefinition::Struct { fields, .. } => {
+                let fields = generate_fields(idl, fields, generate_for, false);
+                let def = if let Some(_) = meta.can_default.get(json_name) {
+                    quote! { #[derive(Default)] }
                 } else {
-                    quote! {
-                        #[derive(Default)]
-                    }
+                    quote! {}
                 };
 
                 quote! {
                     #def
-                    #[derive(Debug)]
                     pub struct #name {
                         #fields
                     }
@@ -189,6 +213,7 @@ pub fn generate(
         generated_typedefs.extend(quote! {
             #doc
             #attrs
+            #[derive(Debug)]
             #body
         });
     }
@@ -204,7 +229,11 @@ mod tests {
     use quote::quote;
 
     use crate::{
-        idl::{EnumVariant, Field, FieldType, Idl, TypeDef, TypedefType},
+        idl::{
+            EnumVariantJsonDefinition, FieldJsonDefinition, FieldTypeJsonDefinition,
+            IdlJsonDefinition, TypeDefJsonDefinition, TypedefTypeJsonDefinition,
+        },
+        meta::Meta,
         TypesAndAccountsConfig,
     };
 
@@ -212,53 +241,64 @@ mod tests {
 
     #[test]
     fn generate_struct_type() {
-        let typedef = TypeDef {
-            name: "OrderParams".to_owned(),
-            typedef_type: TypedefType::Struct {
-                docs: Some(vec![
-                    String::from("This"),
-                    String::from("is"),
-                    String::from("doc"),
-                ]),
-                fields: vec![Field {
-                    name: "orderType".to_owned(),
-                    docs: Some(vec![String::from("Order type")]),
-                    field_type: FieldType::Defined {
-                        defined: "OrderType".to_owned(),
-                    },
-                }],
-            },
-        };
-        let idl = Idl {
+        let idl = IdlJsonDefinition {
             version: "".to_owned(),
             name: "".to_owned(),
             instructions: vec![],
-            accounts: vec![TypeDef {
-                name: "OrderType".to_owned(),
-                typedef_type: TypedefType::Enum {
-                    docs: None,
-                    variants: vec![],
+            accounts: vec![],
+            types: vec![
+                TypeDefJsonDefinition {
+                    name: "OrderType".to_owned(),
+                    typedef_type: TypedefTypeJsonDefinition::Struct {
+                        docs: None,
+                        fields: vec![],
+                    },
                 },
-            }],
-            types: vec![],
+                TypeDefJsonDefinition {
+                    name: "OrderParams".to_owned(),
+                    typedef_type: TypedefTypeJsonDefinition::Struct {
+                        docs: Some(vec![
+                            String::from("This"),
+                            String::from("is"),
+                            String::from("doc"),
+                        ]),
+                        fields: vec![FieldJsonDefinition {
+                            name: "orderType".to_owned(),
+                            docs: Some(vec![String::from("Order type")]),
+                            field_type: FieldTypeJsonDefinition::Defined {
+                                defined: "OrderType".to_owned(),
+                            },
+                        }],
+                    },
+                },
+            ],
             events: vec![],
             errors: vec![],
         };
+        let meta = Meta::from(&idl);
 
         let types_and_accounts_config = TypesAndAccountsConfig::default();
 
-        let generated = generate(&idl, &vec![typedef], &types_and_accounts_config, false);
+        let generated = generate(&idl, &idl.types, &types_and_accounts_config, &meta, false);
         let should_be = quote! {
             use anchor_lang::prelude::*;
+
+            #[derive(AnchorDeserialize, AnchorSerialize, Clone)]
+            #[derive(Copy)]
+            #[derive(Debug)]
+            #[derive(Default)]
+            pub struct OrderType {}
 
             #[doc = " This"]
             #[doc = " is"]
             #[doc = " doc"]
-            #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
+            #[derive(AnchorDeserialize, AnchorSerialize, Clone)]
+            #[derive(Copy)]
             #[derive(Debug)]
+            #[derive(Default)]
             pub struct OrderParams {
                 #[doc = " Order type"]
-                pub order_type: crate::accounts::OrderType,
+                pub order_type: OrderType,
             }
         };
 
@@ -267,28 +307,32 @@ mod tests {
 
     #[test]
     fn generate_struct_type_with_default() {
-        let typedef = TypeDef {
-            name: "OrderParams".to_owned(),
-            typedef_type: TypedefType::Struct {
-                docs: None,
-                fields: vec![Field {
-                    name: "orderId".to_owned(),
+        let idl = IdlJsonDefinition {
+            types: vec![TypeDefJsonDefinition {
+                name: "OrderParams".to_owned(),
+                typedef_type: TypedefTypeJsonDefinition::Struct {
                     docs: None,
-                    field_type: FieldType::Primitive("u8".to_owned()),
-                }],
-            },
+                    fields: vec![FieldJsonDefinition {
+                        name: "orderId".to_owned(),
+                        docs: None,
+                        field_type: FieldTypeJsonDefinition::Primitive("u8".to_owned()),
+                    }],
+                },
+            }],
+            ..Default::default()
         };
-        let idl = Idl::default();
+        let meta = Meta::from(&idl);
 
         let types_and_accounts_config = TypesAndAccountsConfig::default();
 
-        let generated = generate(&idl, &vec![typedef], &types_and_accounts_config, false);
+        let generated = generate(&idl, &idl.types, &types_and_accounts_config, &meta, false);
         let should_be = quote! {
             use anchor_lang::prelude::*;
 
-            #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
-            #[derive(Default)]
+            #[derive(AnchorDeserialize, AnchorSerialize, Clone)]
+            #[derive(Copy)]
             #[derive(Debug)]
+            #[derive(Default)]
             pub struct OrderParams {
                 pub order_id: u8,
             }
@@ -299,30 +343,39 @@ mod tests {
 
     #[test]
     fn generate_zero_copy_enum_type() {
-        let typedef = TypeDef {
+        let typedef = TypeDefJsonDefinition {
             name: "OrderParams".to_owned(),
-            typedef_type: TypedefType::Enum {
+            typedef_type: TypedefTypeJsonDefinition::Enum {
                 docs: None,
-                variants: vec![EnumVariant::Tuple {
+                variants: vec![EnumVariantJsonDefinition::Tuple {
                     docs: None,
                     name: "foo".to_owned(),
                     types: vec![
-                        FieldType::Primitive("u8".to_owned()),
-                        FieldType::Option {
-                            option: Box::new(FieldType::Primitive("String".to_owned())),
+                        FieldTypeJsonDefinition::Primitive("u8".to_owned()),
+                        FieldTypeJsonDefinition::Option {
+                            option: Box::new(FieldTypeJsonDefinition::Primitive(
+                                "String".to_owned(),
+                            )),
                         },
                     ],
                 }],
             },
         };
-        let idl = Idl::default();
+        let idl = IdlJsonDefinition::default();
+        let meta = Meta::from(&idl);
 
         let mut types_and_accounts_config = TypesAndAccountsConfig::default();
         types_and_accounts_config
             .zero_copy
             .push("OrderParams".to_owned());
 
-        let generated = generate(&idl, &vec![typedef], &types_and_accounts_config, false);
+        let generated = generate(
+            &idl,
+            &vec![typedef],
+            &types_and_accounts_config,
+            &meta,
+            false,
+        );
         let should_be = quote! {
             use anchor_lang::prelude::*;
 

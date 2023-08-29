@@ -4,7 +4,7 @@ use inflector::Inflector;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::idl::{Field, FieldType, Idl};
+use crate::idl::{FieldJsonDefinition, FieldTypeJsonDefinition, IdlJsonDefinition};
 
 pub mod events;
 pub mod instructions;
@@ -44,35 +44,33 @@ impl Module {
 }
 
 pub fn generate_field_type(
-    idl: &Idl,
-    field_type: &FieldType,
+    idl: &IdlJsonDefinition,
+    field_type: &FieldTypeJsonDefinition,
     generate_for: Module,
-) -> (TokenStream, bool) {
-    let mut is_defined = false;
+) -> TokenStream {
     let generated = match field_type {
-        FieldType::Primitive(primitive) => {
-            let primitive = if primitive == "publicKey" {
-                "::anchor_lang::prelude::Pubkey"
-            } else {
-                primitive
-            };
-            let primitive = TokenStream::from_str(&primitive).unwrap();
+        FieldTypeJsonDefinition::Primitive(primitive) => {
+            let primitive = TokenStream::from_str(match primitive.as_str() {
+                "publicKey" => "::anchor_lang::prelude::Pubkey",
+                "string" => "String",
+                _ => &primitive,
+            })
+            .unwrap();
 
             quote! {
                 #primitive
             }
         }
-        FieldType::Array { array } => {
+        FieldTypeJsonDefinition::Array { array } => {
             let inner_type = array.0.clone();
-            let (inner, is_inner_defined) = generate_field_type(idl, &inner_type, generate_for);
+            let inner = generate_field_type(idl, &inner_type, generate_for);
             let count = TokenStream::from_str(&array.1.to_string()).unwrap();
-            is_defined = is_inner_defined;
 
             quote! {
                 [#inner; #count]
             }
         }
-        FieldType::Defined { defined } => {
+        FieldTypeJsonDefinition::Defined { defined } => {
             let pascal_case = &defined.to_pascal_case();
             let defined = match idl.get_typedef_module(defined) {
                 None => pascal_case.clone(),
@@ -87,53 +85,52 @@ pub fn generate_field_type(
                 }
             };
             let defined = TokenStream::from_str(&defined).unwrap();
-            is_defined = true;
 
             quote! {
                 #defined
             }
         }
-        FieldType::Option { option } => {
-            let (inner, is_inner_defined) = generate_field_type(idl, option, generate_for);
-            is_defined = is_inner_defined;
+        FieldTypeJsonDefinition::Option { option } => {
+            let inner = generate_field_type(idl, option, generate_for);
             quote! {
                 Option<#inner>
             }
         }
-        FieldType::Vec { vec } => {
-            let (inner, is_inner_defined) = generate_field_type(idl, vec, generate_for);
-            is_defined = is_inner_defined;
+        FieldTypeJsonDefinition::Vec { vec } => {
+            let inner = generate_field_type(idl, vec, generate_for);
             quote! {
                 Vec<#inner>
             }
         }
     };
 
-    (generated, is_defined)
+    generated
 }
 
 pub fn generate_fields(
-    idl: &Idl,
-    fields: &Vec<Field>,
+    idl: &IdlJsonDefinition,
+    fields: &Vec<FieldJsonDefinition>,
     generate_for: Module,
-) -> (TokenStream, bool) {
+    is_enum_struct_field: bool,
+) -> TokenStream {
     let mut generated = TokenStream::new();
-    let mut has_defined = false;
 
     for field in fields {
         let name = TokenStream::from_str(&field.name.to_snake_case()).unwrap();
         let doc = generate_doc_comments(field.docs.clone());
-        let (field_type, is_defined) = generate_field_type(idl, &field.field_type, generate_for);
+        let field_type = generate_field_type(idl, &field.field_type, generate_for);
 
-        if is_defined {
-            has_defined = true;
-        }
+        let _pub = if is_enum_struct_field {
+            quote! {}
+        } else {
+            quote! { pub }
+        };
 
         generated.extend(quote! {
             #doc
-            pub #name: #field_type,
+            #_pub #name: #field_type,
         });
     }
 
-    (generated, has_defined)
+    generated
 }

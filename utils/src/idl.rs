@@ -6,35 +6,43 @@ use crate::generator::Module;
 
 #[derive(Deserialize, Debug, PartialEq, Clone)]
 #[serde(untagged)]
-pub enum FieldType {
-    Defined { defined: String },
+pub enum FieldTypeJsonDefinition {
+    Defined {
+        defined: String,
+    },
     Primitive(String),
-    Option { option: Box<FieldType> },
-    Array { array: (Box<FieldType>, usize) },
-    Vec { vec: Box<FieldType> },
+    Option {
+        option: Box<FieldTypeJsonDefinition>,
+    },
+    Array {
+        array: (Box<FieldTypeJsonDefinition>, usize),
+    },
+    Vec {
+        vec: Box<FieldTypeJsonDefinition>,
+    },
 }
 
 #[derive(Deserialize, Debug, PartialEq, Clone)]
-pub struct Field {
+pub struct FieldJsonDefinition {
     pub name: String,
     pub docs: Option<Vec<String>>,
     #[serde(rename = "type")]
-    pub field_type: FieldType,
+    pub field_type: FieldTypeJsonDefinition,
 }
 
 #[derive(Deserialize, Debug, PartialEq, Clone)]
 #[serde(untagged)]
-pub enum EnumVariant {
+pub enum EnumVariantJsonDefinition {
     Struct {
         docs: Option<Vec<String>>,
         name: String,
-        fields: Vec<Field>,
+        fields: Vec<FieldJsonDefinition>,
     },
     Tuple {
         docs: Option<Vec<String>>,
         name: String,
         #[serde(rename = "fields")]
-        types: Vec<FieldType>,
+        types: Vec<FieldTypeJsonDefinition>,
     },
     UnitLike {
         docs: Option<Vec<String>>,
@@ -44,18 +52,18 @@ pub enum EnumVariant {
 
 #[derive(Deserialize, Debug, PartialEq, Clone)]
 #[serde(untagged)]
-pub enum TypedefType {
+pub enum TypedefTypeJsonDefinition {
     Enum {
         docs: Option<Vec<String>>,
-        variants: Vec<EnumVariant>,
+        variants: Vec<EnumVariantJsonDefinition>,
     },
     Struct {
         docs: Option<Vec<String>>,
-        fields: Vec<Field>,
+        fields: Vec<FieldJsonDefinition>,
     },
 }
 
-impl TypedefType {
+impl TypedefTypeJsonDefinition {
     pub fn is_enum(&self) -> bool {
         match self {
             Self::Enum { .. } => true,
@@ -70,14 +78,14 @@ impl TypedefType {
         }
     }
 
-    pub fn fields(&self) -> Option<Vec<Field>> {
+    pub fn fields(&self) -> Option<Vec<FieldJsonDefinition>> {
         match self {
             Self::Struct { fields, .. } => Some(fields.clone()),
             _ => None,
         }
     }
 
-    pub fn variants(&self) -> Option<Vec<EnumVariant>> {
+    pub fn variants(&self) -> Option<Vec<EnumVariantJsonDefinition>> {
         match self {
             Self::Enum { variants, .. } => Some(variants.clone()),
             _ => None,
@@ -93,14 +101,14 @@ impl TypedefType {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct TypeDef {
+pub struct TypeDefJsonDefinition {
     pub name: String,
     #[serde(rename = "type")]
-    pub typedef_type: TypedefType,
+    pub typedef_type: TypedefTypeJsonDefinition,
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
-pub struct InstructionAccount {
+pub struct InstructionAccountJsonDefinition {
     pub name: String,
     #[serde(rename = "isMut")]
     pub is_mut: bool,
@@ -109,37 +117,37 @@ pub struct InstructionAccount {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct InstructionDef {
+pub struct InstructionJsonDefinition {
     pub name: String,
-    pub accounts: Vec<InstructionAccount>,
-    pub args: Vec<Field>,
+    pub accounts: Vec<InstructionAccountJsonDefinition>,
+    pub args: Vec<FieldJsonDefinition>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct EventDef {
+pub struct EventJsonDefinition {
     pub name: String,
-    pub fields: Vec<Field>,
+    pub fields: Vec<FieldJsonDefinition>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct ErrorDef {
+pub struct ErrorJsonDefinition {
     pub code: u32,
     pub name: String,
     pub msg: String,
 }
 
 #[derive(Deserialize, Debug, Default)]
-pub struct Idl {
+pub struct IdlJsonDefinition {
     pub version: String,
     pub name: String,
-    pub instructions: Vec<InstructionDef>,
-    pub accounts: Vec<TypeDef>,
-    pub types: Vec<TypeDef>,
-    pub events: Vec<EventDef>,
-    pub errors: Vec<ErrorDef>,
+    pub instructions: Vec<InstructionJsonDefinition>,
+    pub accounts: Vec<TypeDefJsonDefinition>,
+    pub types: Vec<TypeDefJsonDefinition>,
+    pub events: Vec<EventJsonDefinition>,
+    pub errors: Vec<ErrorJsonDefinition>,
 }
 
-impl Idl {
+impl IdlJsonDefinition {
     pub fn is_type(&self, name: &String) -> bool {
         self.types
             .iter()
@@ -164,22 +172,23 @@ impl Idl {
         }
     }
 
-    pub fn read_idl(idl_path: &PathBuf) -> Idl {
+    pub fn read_idl(idl_path: &PathBuf) -> IdlJsonDefinition {
         let mut file = File::open(idl_path).expect("Failed to read IDL");
 
         let mut file_contents = String::new();
         file.read_to_string(&mut file_contents)
             .expect("Failed to read IDL");
 
-        serde_json::from_str::<Idl>(&file_contents).expect("Invalid IDL contents")
+        serde_json::from_str::<IdlJsonDefinition>(&file_contents).expect("Invalid IDL contents")
     }
 }
 
 #[cfg(test)]
 mod test {
     use crate::idl::{
-        EnumVariant, ErrorDef, EventDef, Field, FieldType, InstructionAccount, InstructionDef,
-        TypeDef,
+        EnumVariantJsonDefinition, ErrorJsonDefinition, EventJsonDefinition, FieldJsonDefinition,
+        FieldTypeJsonDefinition, InstructionAccountJsonDefinition, InstructionJsonDefinition,
+        TypeDefJsonDefinition,
     };
 
     #[test]
@@ -231,7 +240,7 @@ mod test {
         }
         "#;
 
-        let typedef = serde_json::from_str::<TypeDef>(typedef_str);
+        let typedef = serde_json::from_str::<TypeDefJsonDefinition>(typedef_str);
         assert!(typedef.is_ok());
         let typedef = typedef.unwrap();
 
@@ -243,27 +252,33 @@ mod test {
         assert_eq!(fields.len(), 5);
         assert_eq!(
             fields[0].field_type,
-            FieldType::Defined {
+            FieldTypeJsonDefinition::Defined {
                 defined: "OrderType".to_owned(),
             }
         );
-        assert_eq!(fields[1].field_type, FieldType::Primitive("u8".to_owned()),);
+        assert_eq!(
+            fields[1].field_type,
+            FieldTypeJsonDefinition::Primitive("u8".to_owned()),
+        );
         assert_eq!(
             fields[2].field_type,
-            FieldType::Option {
-                option: Box::new(FieldType::Primitive("i64".to_owned())),
+            FieldTypeJsonDefinition::Option {
+                option: Box::new(FieldTypeJsonDefinition::Primitive("i64".to_owned())),
             },
         );
         assert_eq!(
             fields[3].field_type,
-            FieldType::Array {
-                array: (Box::new(FieldType::Primitive("u8".to_owned())), 6),
+            FieldTypeJsonDefinition::Array {
+                array: (
+                    Box::new(FieldTypeJsonDefinition::Primitive("u8".to_owned())),
+                    6
+                ),
             },
         );
         assert_eq!(
             fields[4].field_type,
-            FieldType::Vec {
-                vec: Box::new(FieldType::Defined {
+            FieldTypeJsonDefinition::Vec {
+                vec: Box::new(FieldTypeJsonDefinition::Defined {
                     defined: "paddingStruct".to_owned(),
                 })
             }
@@ -303,7 +318,7 @@ mod test {
         }
         "#;
 
-        let typedef = serde_json::from_str::<TypeDef>(typedef_str);
+        let typedef = serde_json::from_str::<TypeDefJsonDefinition>(typedef_str);
         assert!(typedef.is_ok());
         let typedef = typedef.unwrap();
 
@@ -315,28 +330,28 @@ mod test {
         assert_eq!(variants.len(), 3);
         assert_eq!(
             variants[0],
-            EnumVariant::Tuple {
+            EnumVariantJsonDefinition::Tuple {
                 docs: None,
                 name: "UserOrderId".to_owned(),
-                types: vec![FieldType::Primitive("u8".to_owned())]
+                types: vec![FieldTypeJsonDefinition::Primitive("u8".to_owned())]
             }
         );
         assert_eq!(
             variants[1],
-            EnumVariant::UnitLike {
+            EnumVariantJsonDefinition::UnitLike {
                 docs: None,
                 name: "OrderId".to_owned()
             }
         );
         assert_eq!(
             variants[2],
-            EnumVariant::Struct {
+            EnumVariantJsonDefinition::Struct {
                 docs: None,
                 name: "StructField".to_owned(),
-                fields: vec![Field {
+                fields: vec![FieldJsonDefinition {
                     name: "side".to_owned(),
                     docs: None,
-                    field_type: FieldType::Defined {
+                    field_type: FieldTypeJsonDefinition::Defined {
                         defined: "Side".to_owned()
                     }
                 }],
@@ -379,7 +394,7 @@ mod test {
         }
         "#;
 
-        let instruction = serde_json::from_str::<InstructionDef>(instruction_str);
+        let instruction = serde_json::from_str::<InstructionJsonDefinition>(instruction_str);
         assert!(instruction.is_ok());
         let instruction = instruction.unwrap();
 
@@ -387,7 +402,7 @@ mod test {
         assert_eq!(instruction.accounts.len(), 2);
         assert_eq!(
             instruction.accounts[0],
-            InstructionAccount {
+            InstructionAccountJsonDefinition {
                 name: "user".to_owned(),
                 is_mut: true,
                 is_signer: false
@@ -396,11 +411,14 @@ mod test {
         assert_eq!(instruction.args.len(), 2);
         assert_eq!(
             instruction.args[1],
-            Field {
+            FieldJsonDefinition {
                 name: "name".to_owned(),
                 docs: None,
-                field_type: FieldType::Array {
-                    array: (Box::new(FieldType::Primitive("u8".to_owned())), 32)
+                field_type: FieldTypeJsonDefinition::Array {
+                    array: (
+                        Box::new(FieldTypeJsonDefinition::Primitive("u8".to_owned())),
+                        32
+                    )
                 }
             }
         );
@@ -431,7 +449,7 @@ mod test {
         }
         "#;
 
-        let event = serde_json::from_str::<EventDef>(event_str);
+        let event = serde_json::from_str::<EventJsonDefinition>(event_str);
         assert!(event.is_ok());
         let event = event.unwrap();
 
@@ -449,7 +467,7 @@ mod test {
         }
         "#;
 
-        let error = serde_json::from_str::<ErrorDef>(error_str);
+        let error = serde_json::from_str::<ErrorJsonDefinition>(error_str);
         assert!(error.is_ok());
         let error = error.unwrap();
 

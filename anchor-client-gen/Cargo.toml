@@ -1,6 +1,6 @@
 [package]
 name = "anchor_client_gen"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Dominik Michal"]
 license = "MIT"
@@ -16,4 +16,4 @@ path = "src/lib.rs"
 proc-macro = true
 
 [dependencies]
-utils = { package = "anchor-client-gen-utils", path = "../utils", version = "0.1.2" }
+utils = { package = "anchor-client-gen-utils", path = "../utils", version = "0.1.3" }

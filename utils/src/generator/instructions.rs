@@ -5,7 +5,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use solana_sdk::hash;
 
-use crate::idl::{Field, Idl, InstructionAccount};
+use crate::idl::{FieldJsonDefinition, IdlJsonDefinition, InstructionAccountJsonDefinition};
 
 use super::{generate_field_type, Module};
 
@@ -23,7 +23,9 @@ fn generate_discriminator(name: &String) -> TokenStream {
     TokenStream::from_str(&format!("[{}]", discriminator_str)).unwrap()
 }
 
-fn generate_accounts(idl_accounts: &Vec<InstructionAccount>) -> (TokenStream, TokenStream) {
+fn generate_accounts(
+    idl_accounts: &Vec<InstructionAccountJsonDefinition>,
+) -> (TokenStream, TokenStream) {
     let mut accounts_struct_props = TokenStream::new();
     let mut accounts_metas_elements = TokenStream::new();
 
@@ -47,13 +49,16 @@ fn generate_accounts(idl_accounts: &Vec<InstructionAccount>) -> (TokenStream, To
     (accounts_struct_props, accounts_metas_elements)
 }
 
-fn generate_args(idl: &Idl, idl_args: &Vec<Field>) -> (TokenStream, TokenStream) {
+fn generate_args(
+    idl: &IdlJsonDefinition,
+    idl_args: &Vec<FieldJsonDefinition>,
+) -> (TokenStream, TokenStream) {
     let mut fn_data_args = TokenStream::new();
     let mut data_props = TokenStream::new();
 
     for arg in idl_args {
         let name = TokenStream::from_str(&arg.name.to_snake_case()).unwrap();
-        let (field_type, _) = generate_field_type(idl, &arg.field_type, Module::Instructions);
+        let field_type = generate_field_type(idl, &arg.field_type, Module::Instructions);
 
         data_props.extend(quote! {
             #name,
@@ -66,7 +71,7 @@ fn generate_args(idl: &Idl, idl_args: &Vec<Field>) -> (TokenStream, TokenStream)
     (fn_data_args, data_props)
 }
 
-pub fn generate(idl: &Idl) -> TokenStream {
+pub fn generate(idl: &IdlJsonDefinition) -> TokenStream {
     let mut generated = TokenStream::new();
 
     for instruction in &idl.instructions {
@@ -127,7 +132,7 @@ pub fn generate(idl: &Idl) -> TokenStream {
                 pub fn new_with_remaining_accounts(
                     #fn_accounts_arg
                     #fn_data_args
-                    remaining_accounts: Vec<AccountMeta>,
+                    remaining_accounts: &Vec<AccountMeta>,
                 ) -> Instruction {
                     let data = #data_struct_name {
                         discriminator: Self::DISCRIMINATOR,
@@ -165,32 +170,34 @@ mod tests {
     use quote::quote;
 
     use crate::idl::{
-        Field, FieldType, Idl, InstructionAccount, InstructionDef, TypeDef, TypedefType,
+        FieldJsonDefinition, FieldTypeJsonDefinition, IdlJsonDefinition,
+        InstructionAccountJsonDefinition, InstructionJsonDefinition, TypeDefJsonDefinition,
+        TypedefTypeJsonDefinition,
     };
 
     use super::{generate, generate_discriminator};
 
     #[test]
     fn generate_instruction_with_accounts_and_args() {
-        let mut idl = Idl::default();
-        idl.types.push(TypeDef {
+        let mut idl = IdlJsonDefinition::default();
+        idl.types.push(TypeDefJsonDefinition {
             name: "OrderParams".to_owned(),
-            typedef_type: TypedefType::Struct {
+            typedef_type: TypedefTypeJsonDefinition::Struct {
                 docs: None,
                 fields: vec![],
             },
         });
-        idl.instructions.push(InstructionDef {
+        idl.instructions.push(InstructionJsonDefinition {
             name: "placePerpOrder".to_owned(),
-            accounts: vec![InstructionAccount {
+            accounts: vec![InstructionAccountJsonDefinition {
                 name: "state".to_owned(),
                 is_mut: true,
                 is_signer: true,
             }],
-            args: vec![Field {
+            args: vec![FieldJsonDefinition {
                 name: "orderParams".to_owned(),
                 docs: None,
-                field_type: FieldType::Defined {
+                field_type: FieldTypeJsonDefinition::Defined {
                     defined: "OrderParams".to_owned(),
                 },
             }],
@@ -244,7 +251,7 @@ mod tests {
                 pub fn new_with_remaining_accounts(
                     accounts: PlacePerpOrderAccounts,
                     order_params: crate::types::OrderParams,
-                    remaining_accounts: Vec<AccountMeta>,
+                    remaining_accounts: &Vec<AccountMeta>,
                 ) -> Instruction {
                     let data = PlacePerpOrderData {
                         discriminator: Self::DISCRIMINATOR,

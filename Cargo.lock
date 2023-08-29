@@ -124,7 +124,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-client-gen-utils"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "Inflector",
  "proc-macro2",
@@ -202,7 +202,7 @@ dependencies = [
 
 [[package]]
 name = "anchor_client_gen"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anchor-client-gen-utils",
 ]
@@ -875,12 +875,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 
 [[package]]
-name = "example"
+name = "example-mango"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor_client_gen",
- "bytemuck",
 ]
 
 [[package]]

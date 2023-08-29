@@ -4,8 +4,8 @@ anchor_client_gen::generate!(
     idl_path = "idl.json",
     program_id = "NativeLoader1111111111111111111111111111111",
     skip_errors,
-    zero_copy_unsafe(State),
-    repr_c(State)
+    zero_copy_unsafe(State, FeeStructure),
+    repr_c(State, FeeStructure)
 );
 
 impl Default for types::FeeStructure {
@@ -15,15 +15,6 @@ impl Default for types::FeeStructure {
             filler_reward_structure: types::OrderFillerRewardStructure::default(),
             referrer_reward_epoch_upper_bound: 0,
             flat_filler_fee: 0,
-        }
-    }
-}
-
-impl Default for types::OracleGuardRails {
-    fn default() -> Self {
-        Self {
-            price_divergence: types::PriceDivergenceGuardRails::default(),
-            validity: types::ValidityGuardRails::default(),
         }
     }
 }

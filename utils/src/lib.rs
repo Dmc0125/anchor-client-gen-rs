@@ -7,11 +7,13 @@ use solana_sdk::pubkey::Pubkey;
 
 use crate::{
     generator::{events, instructions, state},
-    idl::Idl,
+    idl::IdlJsonDefinition,
+    meta::Meta,
 };
 
 pub mod generator;
 pub mod idl;
+pub mod meta;
 
 #[derive(Default, PartialEq, Debug)]
 pub struct TypesAndAccountsConfig {
@@ -212,12 +214,18 @@ impl Args {
 }
 
 pub fn generate(args: Args) -> TokenStream {
-    let idl = &Idl::read_idl(&args.idl_path);
-
+    let idl = &IdlJsonDefinition::read_idl(&args.idl_path);
+    let meta = Meta::from(idl);
     let program_id = args.program_id;
 
     let types = if idl.types.len() > 0 {
-        let types = state::generate(idl, &idl.types, &args.types_and_accounts_config, false);
+        let types = state::generate(
+            idl,
+            &idl.types,
+            &args.types_and_accounts_config,
+            &meta,
+            false,
+        );
         quote! {
             pub mod types {
                 #types
@@ -227,7 +235,13 @@ pub fn generate(args: Args) -> TokenStream {
         quote! {}
     };
     let accounts = if idl.accounts.len() > 0 {
-        let accounts = state::generate(idl, &idl.accounts, &args.types_and_accounts_config, true);
+        let accounts = state::generate(
+            idl,
+            &idl.accounts,
+            &args.types_and_accounts_config,
+            &meta,
+            true,
+        );
         quote! {
             pub mod accounts {
                 #accounts
@@ -248,7 +262,7 @@ pub fn generate(args: Args) -> TokenStream {
     };
 
     let events = if !args.skip_events && idl.events.len() > 0 {
-        let events = events::generate(idl);
+        let events = events::generate(idl, &meta);
         quote! {
             #events
         }
